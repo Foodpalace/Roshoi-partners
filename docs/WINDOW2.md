@@ -1,6 +1,6 @@
-# Roshoi Window 2 — Restaurant Partner
+# Order King Window 2 — Restaurant Partner
 
-Restaurant / vendor operating system for the Roshoi marketplace.
+Restaurant / vendor operating system for the Order King marketplace.
 
 This window is **not** the full platform. It is the kitchen-facing product, designed to connect to Window 1 (customer), Window 3 (rider), Window 4 (admin/CEO) and Window 5 (shared core).
 
@@ -32,6 +32,8 @@ Injected by the platform on deploy:
 
 - `DATABASE_URL` — Neon Postgres
 - Auth broker credentials
+- `HDMASTER_URL` — base URL for the canonical Order King core
+- `ROSHOI_SERVICE_TOKEN` — server-only service credential accepted by HDmaster
 - `XAI_API_KEY` — optional, server-only assistant
 
 Feature flags and branding live in `src/lib/platform-config.ts` (overridable later via `platform_settings`).
@@ -74,25 +76,30 @@ food + packing
 
 Historical `order_items` prices are snapshots. Menu edits do not update them.
 
-## Order state
+## Order authority
+
+The canonical LIVE order state is owned by HDmaster. Partner UI labels remain:
 
 `PLACED → ACCEPTED → PREPARING → READY → RIDER_ASSIGNED → PICKED_UP → ON_THE_WAY → DELIVERED`
 
-Exceptions: REJECTED (reason required), CANCELLED, REFUNDED, PARTIAL_REFUND, FAILED_PAYMENT, DELIVERY_FAILED.
+The Partner adapter maps these labels to the canonical HDmaster order contract. Accept / reject / preparing / ready are sent to HDmaster with an idempotency key and service authentication. The local Partner database is only a projection/cache after HDmaster confirms the transition.
 
-READY writes a row to `rider_dispatch_queue` for Window 3. The rider adapter is **NOT CONNECTED**. Simulated kitchens may advance rider states with an explicit “Advance rider (simulated)” control.
+For LIVE orders, READY does **not** create an authoritative local rider queue. HDmaster owns READY → dispatch offer creation.
+
+Simulated rider advancement remains explicitly labelled and is refused outside SIMULATED kitchens.
 
 ## Adapters (honest)
 
 | System | Status |
 | --- | --- |
+| HDmaster order authority | Connected for restaurant transitions |
 | In-app notifications | Connected |
 | SMS | NOT CONNECTED |
 | WhatsApp | NOT CONNECTED |
 | Push | NOT CONNECTED |
 | Object storage (S3) | NOT CONNECTED (local preview records) |
-| Rider dispatch | Queue table ready, provider NOT CONNECTED |
-| Payments | NOT CONNECTED |
+| Rider dispatch | Owned by HDmaster for LIVE; Partner local queue is non-authoritative |
+| Payments | NOT CONNECTED in this window |
 | AI | Connected only when `XAI_API_KEY` is present |
 
 ## Window 1 contract
@@ -107,9 +114,7 @@ ETA is an estimate from prep minutes, never an exact promise.
 
 ## Window 3 contract
 
-On READY: `rider_dispatch_queue` row with pickup lat/lng, address, order code, ready_at.
-
-Restaurant UI consumes rider states from `order_events`. Customer PII is limited to an area label.
+LIVE dispatch offers and rider state are owned by HDmaster. Partner must not become the rider/order authority. Simulated rider controls exist only for SIMULATED kitchens.
 
 ## Window 4 contract
 
@@ -117,13 +122,11 @@ Admin must be able to verify / reject / suspend, set commission bps, override ho
 
 ## Window 5 contract
 
-Typed server functions under `src/lib/server/*` are the vendor API. Replace PGLite/Neon calls with shared-core adapters without changing UI contracts. Version prefix: `/v1/`.
-
-POST order transitions require `idempotencyKey`.
+Typed server functions under `src/lib/server/*` are the vendor API. LIVE order transitions use the HDmaster `/v1/admin/orders/:id/transition` contract with `contractVersion = 1`, actor `restaurant`, `Idempotency-Key`, and service authentication resolved through an existing HDmaster user/workspace.
 
 ## Branding
 
-`src/lib/platform-config.ts` — name, logos, colors, legal, support, flags.
+`src/lib/platform-config.ts` — Order King name, logos, colors, legal, support, flags.
 
 Do not scatter brand literals in components. i18n keys in `src/lib/i18n/{en,bn}.ts`. Assamese can be added as a dictionary later.
 
@@ -135,12 +138,12 @@ npm run typecheck
 npm run build
 ```
 
-Critical tests: money/paise, state machine, RBAC, isolation, promotion funder split, menu snapshot invariant, hours.
+Critical tests: money/paise, state machine, RBAC, isolation, promotion funder split, menu snapshot invariant, hours, and HDmaster transition adapter/idempotency.
 
 ## Assumptions
 
 1. Platform stack is TanStack Start (not a separate Next.js app).
-2. Shared core is not live; this window uses a compatible Postgres schema.
+2. HDmaster is the canonical LIVE order authority.
 3. Commission default is 1000 bps (10%).
 4. Tax treatment is stored as snapshot fields and is not invented by this UI.
 5. Demo kitchen is per signed-in user and labelled SIMULATED.
