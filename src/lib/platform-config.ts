@@ -1,5 +1,5 @@
 /**
- * Central platform configuration for Roshoi.
+ * Central platform configuration for Order King.
  * Business identity, theme, fees, flags and legal copy live here — not in
  * scattered components. Window 4 may overlay these values via `platform_settings`.
  * Secrets never belong in this file.
@@ -21,16 +21,16 @@ export type FeatureFlagName =
 
 export const platformConfig = {
   brand: {
-    appName: "Roshoi Partner",
-    shortAppName: "Roshoi",
+    appName: "Order King Partner",
+    shortAppName: "Order King",
     tagline: "Your kitchen. Your orders. Your settlement.",
-    restaurantFacingBrandName: "Roshoi Partner",
-    customerFacingBrand: "Roshoi",
-    adminFacingBrand: "Roshoi Command",
-    legalCompanyName: "Roshoi Marketplace",
-    domain: "roshoi.in",
-    notificationSenderName: "Roshoi",
-    invoiceFooter: "Thank you for cooking with Roshoi.",
+    restaurantFacingBrandName: "Order King Partner",
+    customerFacingBrand: "Order King",
+    adminFacingBrand: "Order King Command",
+    legalCompanyName: "Order King Foods Private Limited",
+    domain: "orderking.in",
+    notificationSenderName: "Order King",
+    invoiceFooter: "Thank you for cooking with Order King.",
     logo: "/brand/logo.svg",
     darkLogo: "/brand/logo-dark.svg",
     lightLogo: "/brand/logo-light.svg",
@@ -67,48 +67,14 @@ export const platformConfig = {
     orderPollMs: 4000,
     kitchenPollMs: 3000,
     maxUploadBytes: 512 * 1024,
-    allowedDocumentTypes: [
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ],
+    allowedDocumentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
     allowedImageTypes: ["image/jpeg", "image/png", "image/webp"],
   },
-  fees: {
-    currency: "INR",
-    currencySymbol: "₹",
-    moneyUnit: "paise",
-    defaultPackingPaise: 0,
-  },
-  commission: {
-    targetBps: 1000,
-    allowedBps: COMMISSION_OPTIONS_BPS,
-    allowCustom: true,
-  },
-  notifications: {
-    smsProvider: "NOT_CONNECTED",
-    whatsappProvider: "NOT_CONNECTED",
-    pushProvider: "NOT_CONNECTED",
-    smsSender: "",
-    whatsappSender: "",
-  },
-  legal: {
-    gstInformation: "",
-    fssaiInformation: "",
-    supportPhone: "",
-    supportEmail: "partners@roshoi.in",
-    socialLinks: {
-      instagram: "",
-      facebook: "",
-      x: "",
-    },
-  },
-  support: {
-    phone: "",
-    email: "partners@roshoi.in",
-    helpCenter: "",
-  },
+  fees: { currency: "INR", currencySymbol: "₹", moneyUnit: "paise", defaultPackingPaise: 0 },
+  commission: { targetBps: 1000, allowedBps: COMMISSION_OPTIONS_BPS, allowCustom: true },
+  notifications: { smsProvider: "NOT_CONNECTED", whatsappProvider: "NOT_CONNECTED", pushProvider: "NOT_CONNECTED", smsSender: "", whatsappSender: "" },
+  legal: { gstInformation: "", fssaiInformation: "", supportPhone: "", supportEmail: "partners@orderking.in", socialLinks: { instagram: "", facebook: "", x: "" } },
+  support: { phone: "", email: "partners@orderking.in", helpCenter: "" },
   featureFlags: {
     restaurant_ai: true,
     restaurant_analytics: true,
