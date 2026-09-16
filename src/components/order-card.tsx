@@ -7,7 +7,8 @@ import { actionKey, clearActionKey } from "@/lib/idempotency-client";
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { REJECT_REASONS, type OrderState } from "@/lib/orders/state-machine";
-import { transitionOrder, advanceSimulatedRider } from "@/lib/server/api-orders";
+import { advanceSimulatedRider } from "@/lib/server/api-orders";
+import { transitionOrderViaHDmaster } from "@/lib/server/hdmaster-order-transition";
 
 export type OrderView = {
   id: string;
@@ -75,7 +76,7 @@ export function OrderCard({
     setBusy(true);
     setError(null);
     try {
-      await transitionOrder({
+      await transitionOrderViaHDmaster({
         data: {
           restaurantId,
           orderId: order.id,
@@ -122,13 +123,7 @@ export function OrderCard({
     <Card className={cn("space-y-3", large && "p-5")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              "grid size-10 place-items-center rounded-full text-sm font-semibold",
-              mark.cls,
-            )}
-            aria-label={order.state}
-          >
+          <span className={cn("grid size-10 place-items-center rounded-full text-sm font-semibold", mark.cls)} aria-label={order.state}>
             {mark.letter}
           </span>
           <div>
@@ -150,9 +145,7 @@ export function OrderCard({
             <span>
               <span className="tabular font-medium">{line.quantity}×</span> {line.itemName}
               {line.variantName ? ` · ${line.variantName}` : ""}
-              {line.addons?.length
-                ? ` + ${line.addons.map((a) => a.name).join(", ")}`
-                : ""}
+              {line.addons?.length ? ` + ${line.addons.map((a) => a.name).join(", ")}` : ""}
             </span>
             <span className="tabular text-muted">{formatINR(line.unitPricePaise * line.quantity)}</span>
           </li>
@@ -166,9 +159,7 @@ export function OrderCard({
       ) : null}
 
       <div className="flex flex-wrap gap-2 text-xs text-muted">
-        <span className="rounded-full border border-line px-2 py-1">
-          {order.isCod ? t("orders.cod") : t("orders.paid")}
-        </span>
+        <span className="rounded-full border border-line px-2 py-1">{order.isCod ? t("orders.cod") : t("orders.paid")}</span>
         <span className="rounded-full border border-line px-2 py-1">
           {t("orders.prepTime")} {order.prepMinutes} {t("common.minutes")}
         </span>
@@ -193,54 +184,31 @@ export function OrderCard({
           <div className="grid gap-2">
             {REJECT_REASONS.map((r) => (
               <label key={r} className="flex min-h-11 items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name={`reject-${order.id}`}
-                  checked={reason === r}
-                  onChange={() => setReason(r)}
-                />
+                <input type="radio" name={`reject-${order.id}`} checked={reason === r} onChange={() => setReason(r)} />
                 {t(`rejectReasons.${r}`)}
               </label>
             ))}
           </div>
           <div className="flex gap-2">
-            <Button variant="danger" disabled={busy} onClick={() => void act("reject")}>
-              {t("orders.reject")}
-            </Button>
-            <Button variant="secondary" onClick={() => setRejectOpen(false)}>
-              {t("common.cancel")}
-            </Button>
+            <Button variant="danger" disabled={busy} onClick={() => void act("reject")}>{t("orders.reject")}</Button>
+            <Button variant="secondary" onClick={() => setRejectOpen(false)}>{t("common.cancel")}</Button>
           </div>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
           {order.state === "PLACED" ? (
             <>
-              <Button size={large ? "lg" : "md"} disabled={busy} onClick={() => void act("accept")}>
-                {t("orders.accept")}
-              </Button>
-              <Button
-                size={large ? "lg" : "md"}
-                variant="secondary"
-                disabled={busy}
-                onClick={() => setRejectOpen(true)}
-              >
-                {t("orders.reject")}
-              </Button>
+              <Button size={large ? "lg" : "md"} disabled={busy} onClick={() => void act("accept")}>{t("orders.accept")}</Button>
+              <Button size={large ? "lg" : "md"} variant="secondary" disabled={busy} onClick={() => setRejectOpen(true)}>{t("orders.reject")}</Button>
             </>
           ) : null}
           {order.state === "ACCEPTED" ? (
-            <Button size={large ? "lg" : "md"} disabled={busy} onClick={() => void act("preparing")}>
-              {t("orders.preparing")}
-            </Button>
+            <Button size={large ? "lg" : "md"} disabled={busy} onClick={() => void act("preparing")}>{t("orders.preparing")}</Button>
           ) : null}
           {order.state === "PREPARING" ? (
-            <Button size={large ? "lg" : "md"} variant="leaf" disabled={busy} onClick={() => void act("ready")}>
-              {t("orders.ready")}
-            </Button>
+            <Button size={large ? "lg" : "md"} variant="leaf" disabled={busy} onClick={() => void act("ready")}>{t("orders.ready")}</Button>
           ) : null}
-          {dataLabel === "SIMULATED" &&
-          ["READY", "RIDER_ASSIGNED", "PICKED_UP", "ON_THE_WAY"].includes(order.state) ? (
+          {dataLabel === "SIMULATED" && ["READY", "RIDER_ASSIGNED", "PICKED_UP", "ON_THE_WAY"].includes(order.state) ? (
             <Button size={large ? "lg" : "md"} variant="secondary" disabled={busy} onClick={() => void simRider()}>
               {t("orders.simulateRider")}
             </Button>
@@ -252,7 +220,5 @@ export function OrderCard({
 }
 
 export function isLiveState(state: OrderState | string): boolean {
-  return !["DELIVERED", "REJECTED", "CANCELLED", "REFUNDED", "FAILED_PAYMENT", "PARTIAL_REFUND", "DELIVERY_FAILED"].includes(
-    state,
-  );
+  return !["DELIVERED", "REJECTED", "CANCELLED", "REFUNDED", "FAILED_PAYMENT", "PARTIAL_REFUND", "DELIVERY_FAILED"].includes(state);
 }
